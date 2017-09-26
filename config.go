@@ -58,6 +58,7 @@ func New(name string, decoder func(io.Reader) error, onChange func(error)) (res 
 			case <-res.stop:
 				return
 			case <-res.watcher.Events:
+				time.Sleep(time.Second * 1) // Let the file settle for a while
 			case <-time.After(time.Second * 30):
 			}
 		}
