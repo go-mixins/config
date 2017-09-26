@@ -27,7 +27,7 @@ type Config struct {
 // must parse data from supplied reader or return error, which will be passed
 // to onChange handler function. Underlying file is re-read on every fsnotify
 // event, with 30-second forced reload as a fallback.
-func New(name string, decoder func(io.Reader) error, onChange func(bool, error)) (res *Config, err error) {
+func New(name string, decoder func(io.Reader) error, onChange func(error)) (res *Config, err error) {
 	res = new(Config)
 	res.name = name
 	res.stop = make(chan struct{})
@@ -41,7 +41,9 @@ func New(name string, decoder func(io.Reader) error, onChange func(bool, error))
 	}
 	go func() {
 		for {
-			onChange(res.read(decoder))
+			if changed, err := res.read(decoder); changed || err != nil {
+				onChange(err)
+			}
 			select {
 			case <-res.stop:
 				return
@@ -58,7 +60,7 @@ func (cfg *Config) Close() {
 	close(cfg.stop)
 }
 
-func (cfg Config) read(decoder func(io.Reader) error) (changed bool, err error) {
+func (cfg *Config) read(decoder func(io.Reader) error) (changed bool, err error) {
 	fp, err := os.Open(cfg.name)
 	if err != nil {
 		err = errors.Wrap(err, "opening file")
@@ -68,7 +70,7 @@ func (cfg Config) read(decoder func(io.Reader) error) (changed bool, err error) 
 	checksum := sha256.New()
 	rdr := io.TeeReader(fp, checksum)
 	err = decoder(rdr)
-	changed = cfg.hash == nil || bytes.Equal(cfg.hash.Sum(nil), checksum.Sum(nil))
+	changed = cfg.hash == nil || !bytes.Equal(cfg.hash.Sum(nil), checksum.Sum(nil))
 	cfg.hash = checksum
 	return
 }

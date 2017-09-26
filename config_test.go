@@ -53,7 +53,7 @@ func wait(t *testing.T, event chan bool) {
 	select {
 	case <-event:
 		break
-	case <-time.After(time.Second * 1):
+	case <-time.After(time.Second * 5):
 		t.Fatal("reload timed out")
 	}
 }
@@ -61,7 +61,7 @@ func wait(t *testing.T, event chan bool) {
 func TestNew(t *testing.T) {
 	var c *testConfig
 	var mu sync.RWMutex
-	loaded := make(chan bool, 1)
+	loaded := make(chan bool)
 	defer close(loaded)
 
 	cfgName := filepath.Join(testDir, "testcfg.json")
@@ -69,14 +69,13 @@ func TestNew(t *testing.T) {
 		mu.RLock()
 		defer mu.RUnlock()
 		return json.NewDecoder(r).Decode(&c)
-	}, func(changed bool, err error) {
+	}, func(err error) {
 		if err != nil {
-			t.Fatalf("unexpected error: %+v", err)
+			t.Logf("error: %+v", err)
+			return
 		}
 		t.Logf("triggered: %#v", c)
-		if changed {
-			loaded <- true
-		}
+		loaded <- true
 	})
 	if err != nil {
 		t.Fatal(err)
