@@ -46,6 +46,7 @@ func New(name string, decoder func(io.Reader) error, onChange func(error)) (res 
 		return
 	}
 	go func() {
+		defer res.watcher.Close()
 		for {
 			if changed, err := res.read(decoder); changed || err != nil {
 				onChange(err)

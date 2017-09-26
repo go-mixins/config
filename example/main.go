@@ -47,5 +47,6 @@ func main() {
 	if app.reloader, err = config.New("config.json", app.ReadConfig, app.ReplaceConfig); err != nil {
 		panic(err)
 	}
+	defer app.reloader.Close() // Stop periodic checker on exit
 	// at this point app.Config is loaded and parsed
 }
