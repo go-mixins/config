@@ -61,7 +61,7 @@ func wait(t *testing.T, event chan bool) {
 func TestNew(t *testing.T) {
 	var c *testConfig
 	var mu sync.RWMutex
-	loaded := make(chan bool)
+	loaded := make(chan bool, 2)
 	defer close(loaded)
 
 	cfgName := filepath.Join(testDir, "testcfg.json")
@@ -85,7 +85,7 @@ func TestNew(t *testing.T) {
 	if len(c.Users) != 2 {
 		t.Fatalf("invalid data loaded: %+v", c)
 	}
-	func() {
+	go func() {
 		mu.Lock()
 		defer mu.Unlock()
 		c.Users = append(c.Users, "Larry")

@@ -7,6 +7,7 @@ import (
 	"hash"
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/go-fsnotify/fsnotify"
@@ -27,10 +28,15 @@ type Config struct {
 // must parse data from supplied reader or return error, which will be passed
 // to onChange handler function. Underlying file is re-read on every fsnotify
 // event, with 30-second forced reload as a fallback.
+//
+// Both callbacks will be GUARANTEED to execute before the function return.
 func New(name string, decoder func(io.Reader) error, onChange func(error)) (res *Config, err error) {
+	once := new(sync.Once)
 	res = new(Config)
 	res.name = name
 	res.stop = make(chan struct{})
+	ready := make(chan error)
+	defer close(ready)
 	if res.watcher, err = fsnotify.NewWatcher(); err != nil {
 		err = errors.Wrap(err, "creating fsnotify watcher")
 		return
@@ -43,15 +49,19 @@ func New(name string, decoder func(io.Reader) error, onChange func(error)) (res 
 		for {
 			if changed, err := res.read(decoder); changed || err != nil {
 				onChange(err)
+				once.Do(func() {
+					ready <- err
+				})
 			}
 			select {
 			case <-res.stop:
 				return
 			case <-res.watcher.Events:
-			case <-time.After(time.Second * 10):
+			case <-time.After(time.Second * 30):
 			}
 		}
 	}()
+	err = <-ready
 	return
 }
 
