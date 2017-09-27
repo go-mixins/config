@@ -42,7 +42,7 @@ func New(name string, decoder func(io.Reader) error, onChange func(error)) (res 
 		return
 	}
 	if err = res.watcher.Add(res.name); err != nil {
-		err = errors.Wrap(err, "adding filename to watcher")
+		err = errors.Wrapf(err, "adding %q to watcher", res.name)
 		return
 	}
 	go func() {
